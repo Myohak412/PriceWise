@@ -1,20 +1,34 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
+import { ShoppingCart, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Later we will link Firebase here. For now, navigate instantly to dashboard.
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError("Invalid email credential or password pattern.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      {/* Branding */}
       <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
         <div className="bg-emerald-600 p-2 rounded-xl text-white">
           <ShoppingCart size={18} />
@@ -22,12 +36,17 @@ export default function Login() {
         <span className="font-black text-xl tracking-tight text-slate-900">PriceWise</span>
       </div>
 
-      {/* Main Container */}
       <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1.5">Secure Dashboard Gateway</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1.5">Secure Gateway</p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <AlertCircle size={16} /> {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
@@ -36,6 +55,8 @@ export default function Login() {
               required
               type="email" 
               placeholder="Email Address" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all" 
             />
           </div>
@@ -46,6 +67,8 @@ export default function Login() {
               required
               type={showPassword ? 'text' : 'password'} 
               placeholder="Password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-12 py-3.5 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all" 
             />
             <button 
@@ -57,25 +80,18 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="text-right">
-            <a href="#" className="text-xs font-bold text-emerald-600 hover:underline">Forgot password?</a>
-          </div>
-
-          <button type="submit" className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm uppercase tracking-widest shadow-md shadow-emerald-600/10 transition-all active:scale-[0.98]">
-            Authorize Access
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm uppercase tracking-widest shadow-md transition-all disabled:opacity-50"
+          >
+            {loading ? 'Verifying...' : 'Authorize Access'}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-wider">
-          <ShieldCheck size={16} className="text-emerald-500" /> AES-256 Protocol Verified
-        </div>
       </div>
 
       <p className="text-center text-sm text-slate-500 mt-6 font-medium">
-        Don't have a tracking profile?{' '}
-        <Link to="/register" className="text-emerald-600 font-bold underline underline-offset-4">
-          Create one now
-        </Link>
+        New to PriceWise? <Link to="/register" className="text-emerald-600 font-bold underline">Create account</Link>
       </p>
     </div>
   );

@@ -9,8 +9,7 @@ export default function Home() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Navigate to dashboard and automatically pass the search item
-      navigate('/dashboard', { state: { initialSearch: searchQuery } });
+      navigate('/dashboard', { state: { initialSearch: searchQuery.trim() } });
     }
   };
 
@@ -58,7 +57,7 @@ export default function Home() {
           Paste a product name or model. We scan major e-commerce platforms live to save you up to 20% on every order.
         </p>
 
-        {/* Big Interactive Search Engine */}
+        {/* Search Input Framework */}
         <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto relative group mb-16">
           <div className="absolute inset-0 bg-emerald-600/10 blur-2xl group-focus-within:bg-emerald-600/20 transition-all rounded-full"></div>
           <div className="relative flex items-center">
@@ -66,7 +65,7 @@ export default function Home() {
             <input 
               type="text" 
               value={searchQuery}
-              onChange={(e) => setSearchTerm(e.target.value)} // Fallback fix: change to target variable
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search product (e.g., Sony WH-1000XM5)..." 
               className="w-full py-5 pl-14 pr-36 bg-white border-2 border-slate-200/80 rounded-2xl text-base font-semibold outline-none focus:border-emerald-500 transition-all shadow-md"
             />
@@ -83,7 +82,14 @@ export default function Home() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {trendingDeals.map((deal, idx) => (
-              <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between hover:border-emerald-200 transition-all cursor-pointer" onClick={() => { setSearchQuery(deal.name); }}>
+              <div 
+                key={idx} 
+                className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between hover:border-emerald-200 transition-all cursor-pointer" 
+                onClick={() => {
+                  setSearchQuery(deal.name);
+                  navigate('/dashboard', { state: { initialSearch: deal.name } });
+                }}
+              >
                 <div>
                   <div className="flex justify-between items-start gap-2 mb-1">
                     <h4 className="font-bold text-sm text-slate-800 truncate">{deal.name}</h4>
