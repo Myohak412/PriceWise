@@ -2,16 +2,17 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// TODO: Replace the placeholder keys below with your actual Firebase config object 
-// from your Firebase Console browser tab!
+
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDz35TpW0rsifxqdXW5nTve_s51nMi3jwE",
+  authDomain: "pricewise-e1dc8.firebaseapp.com",
+  projectId: "pricewise-e1dc8",
+  storageBucket: "pricewise-e1dc8.firebasestorage.app",
+  messagingSenderId: "428999765272",
+  appId: "1:428999765272:web:143ffa858a2bca3227026d",
+  measurementId: "G-9CN9GTCEXL"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
