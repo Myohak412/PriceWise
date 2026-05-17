@@ -1,98 +1,117 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { ShoppingCart, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { ShoppingCart, LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    setErrorMsg('');
     setLoading(true);
 
     try {
+      // Firebase standard sign-in protocol
       await signInWithEmailAndPassword(auth, email, password);
+      // Seamless rerouting directly to your Price Engine dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError("Invalid email credential or password pattern.");
+      console.error(err);
+      // Clean error parsing for user presentation
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setErrorMsg('Invalid email or password. Please verify your credentials.');
+      } else {
+        setErrorMsg('Authentication pipeline failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
-        <div className="bg-emerald-600 p-2 rounded-xl text-white">
-          <ShoppingCart size={18} />
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-slate-900">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div className="inline-flex bg-emerald-600 p-2.5 rounded-xl shadow-md text-white mb-4">
+          <ShoppingCart size={24} />
         </div>
-        <span className="font-black text-xl tracking-tight text-slate-900">PriceWise</span>
+        <h2 className="text-3xl font-black tracking-tight text-slate-900">Welcome Back</h2>
+        <p className="mt-2 text-sm text-slate-500 font-medium">
+          Sign in to access real-time price monitoring
+        </p>
       </div>
 
-      <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1.5">Secure Gateway</p>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow-sm border border-slate-100 sm:rounded-2xl sm:px-10">
+          
+          {errorMsg && (
+            <div className="mb-4 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <AlertCircle size={16} /> {errorMsg}
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleLogin}>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  className="w-full p-3.5 pl-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <Mail className="absolute left-3.5 top-4 text-slate-400" size={16} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  className="w-full p-3.5 pl-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <Lock className="absolute left-3.5 top-4 text-slate-400" size={16} />
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Verifying parameters...' : 'Sign In'} <LogIn size={16} />
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-500 font-medium">
+              New to PriceWise?{' '}
+              <Link to="/register" className="font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                Create an account
+              </Link>
+            </p>
+          </div>
+
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
-            <AlertCircle size={16} /> {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              required
-              type="email" 
-              placeholder="Email Address" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all" 
-            />
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              required
-              type={showPassword ? 'text' : 'password'} 
-              placeholder="Password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-12 py-3.5 text-sm font-semibold outline-none focus:border-emerald-500 focus:bg-white transition-all" 
-            />
-            <button 
-              type="button"
-              onClick={() => setShowPassword(!showPassword)} 
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm uppercase tracking-widest shadow-md transition-all disabled:opacity-50"
-          >
-            {loading ? 'Verifying...' : 'Authorize Access'}
-          </button>
-        </form>
       </div>
-
-      <p className="text-center text-sm text-slate-500 mt-6 font-medium">
-        New to PriceWise? <Link to="/register" className="text-emerald-600 font-bold underline">Create account</Link>
-      </p>
     </div>
   );
 }

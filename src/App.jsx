@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
 
@@ -25,13 +26,16 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route
-          path="/register"
-          element={<Register />}
-        />
-        <Route
-          path="/dashboard"
-          element={<Dashboard greeting={greeting} />}
+        <Route path="/register" element={<Register />} />
+        
+        {/* ONE SINGLE PROTECTED DASHBOARD ROUTE passing the greeting parameter safely inside the gatekeeper */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard greeting={greeting} />
+            </ProtectedRoute>
+          } 
         />
       </Routes>
     </BrowserRouter>

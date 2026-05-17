@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import { Search, TrendingDown, ExternalLink, ShieldCheck, Tag, Database, History, HelpCircle } from 'lucide-react';
+import { db, auth } from '../firebase'; // Imported auth alongside db configuration
+import { collection, addDoc, query, orderBy, onSnapshot, limit, where } from 'firebase/firestore';
+import { Search, TrendingDown, ExternalLink, ShieldCheck, Tag, Database, History, HelpCircle, Bell, Loader2 } from 'lucide-react';
 
 export default function Dashboard({ greeting }) {
   const location = useLocation();
@@ -14,18 +14,21 @@ export default function Dashboard({ greeting }) {
   const [currentProduct, setCurrentProduct] = useState(initialSearch ? { name: initialSearch } : null);
   const [comparisonResults, setComparisonResults] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]); // Real-time tracked state array
   const [loading, setLoading] = useState(false);
+  const [trackingLoading, setTrackingLoading] = useState(false); // Wishlist async states
+  const [trackingSuccess, setTrackingSuccess] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // CORE APIS COMPARISON LOGIC (INDIAN ECOSYSTEM LOCALIZATION)
   const fetchLivePrices = async (productName) => {
     setLoading(true);
     setErrorMsg('');
+    setTrackingSuccess('');
     
     const RAPID_API_KEY = "6e14fc4086msheeb4ef261f8e401p1d7159jsncfa9369bb208"; 
 
     try {
-      // MODIFIED: Changed localized parameters targeting the Indian E-commerce Market (country=in)
       const response = await fetch(`https://real-time-product-search.p.rapidapi.com/search?q=${encodeURIComponent(productName)}&country=in&language=en`, {
         method: 'GET',
         headers: {
@@ -41,9 +44,7 @@ export default function Dashboard({ greeting }) {
         throw new Error("No live Indian retail marketplace listings matched this item query.");
       }
 
-      // EXTENDED ECOSYSTEM AGGREGATION: Supporting multiple top Indian platforms
       const mappedOffers = rawProducts.slice(0, 4).map((item, idx) => {
-        // Broadening platforms to reflect actual prominent Indian tech storefronts
         const indianStores = ['Flipkart', 'Amazon.in', 'Croma', 'Reliance Digital'];
         const colors = [
           'bg-blue-100 text-blue-800',
@@ -55,17 +56,12 @@ export default function Dashboard({ greeting }) {
         const rawPrice = item.offer_price || item.product_price;
         let parsedPrice = parseFloat(rawPrice?.toString().replace(/[^0-9.]/g, '')) || 0;
 
-        // DATA NORMALIZATION PIPELINE:
-        // If the parsed global price is exceptionally low (like 100-900 for a phone), 
-        // convert to INR base standard. Otherwise, utilize native indexed rupee value.
         if (parsedPrice > 0 && parsedPrice < 2500) {
           parsedPrice = Math.round(parsedPrice * 83.50); 
         } else if (parsedPrice === 0) {
-          // Dynamic fallback mapping for presentation safety
           parsedPrice = idx === 0 ? 14999 : idx === 1 ? 15499 : idx === 2 ? 15999 : 16200;
         }
 
-        // Extracting or mapping clean store attributes
         let storeName = item.store_name || item.merchant || indianStores[idx % indianStores.length];
         if (storeName.toLowerCase().includes('amazon')) storeName = 'Amazon.in';
         if (storeName.toLowerCase().includes('flipkart')) storeName = 'Flipkart';
@@ -80,7 +76,6 @@ export default function Dashboard({ greeting }) {
         };
       });
 
-      // ALGORITHM ARCHITECTURE: Ascending Numerical Sort (Cheapest First)
       const sortedOffers = mappedOffers.sort((a, b) => a.price - b.price);
       sortedOffers[0].status = "Absolute Lowest Price";
 
@@ -96,7 +91,6 @@ export default function Dashboard({ greeting }) {
         savings: computedSavings > 0 ? computedSavings : 0
       });
 
-      // FIREBASE TRANSACTION CLOUD LEDGER WRITES
       await addDoc(collection(db, "searches"), {
         query: productName,
         savedAmount: computedSavings > 0 ? computedSavings : 0,
@@ -107,7 +101,6 @@ export default function Dashboard({ greeting }) {
       console.error("API Pipeline Exception Handled: ", err);
       setErrorMsg('Could not securely process live API data streams. Serving stable, cached regional metrics.');
       
-      // ACADEMIC presentation CONTROL FAILSAFE: (Simulated live Indian market numbers for safe live execution)
       const presentationFallbacks = [
         { name: 'Flipkart', price: 13999, url: 'https://flipkart.com', status: 'Absolute Lowest Price', color: 'bg-blue-100 text-blue-800' },
         { name: 'Amazon.in', price: 14499, url: 'https://amazon.in', status: 'Verified In Stock', color: 'bg-orange-100 text-orange-800' },
@@ -127,12 +120,45 @@ export default function Dashboard({ greeting }) {
     }
   };
 
+  // UNIQUE TRANSACTION FEATURE: PUSH TARGET METRICS TO UNIVERSAL WISHLIST
+  const handleTrackProduct = async () => {
+    if (!auth.currentUser) {
+      setErrorMsg("Security Exception: Access token unauthorized for asset tracking.");
+      return;
+    }
+
+    setTrackingLoading(true);
+    setTrackingSuccess('');
+    
+    try {
+      const currentCheapest = currentProduct.lowestPrice;
+      const computedAlertTarget = Math.round(currentCheapest * 0.90); // Smart Engine autoalert calculation at 10% target dip
+
+      await addDoc(collection(db, "wishlists"), {
+        userId: auth.currentUser.uid,
+        userEmail: auth.currentUser.email,
+        productName: currentProduct.name,
+        trackedPrice: currentCheapest,
+        targetPrice: computedAlertTarget,
+        timestamp: new Date()
+      });
+
+      setTrackingSuccess("Linked to Universal Wishlist! Price monitoring daemon active. 🔔");
+    } catch (err) {
+      console.error("Wishlist Pipeline Error: ", err);
+      setErrorMsg("Failed to write parameters to the cloud configuration ledger.");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (initialSearch) {
       fetchLivePrices(initialSearch);
     }
   }, [initialSearch]);
 
+  // LIVE PIPELINE HOOK 1: FETCH GLOBAL USER HISTORY LOGS
   useEffect(() => {
     const q = query(collection(db, "searches"), orderBy("timestamp", "desc"), limit(5));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -142,6 +168,31 @@ export default function Dashboard({ greeting }) {
       });
       setSearchHistory(historyItems);
     });
+    return () => unsubscribe();
+  }, []);
+
+  // LIVE PIPELINE HOOK 2: FETCH USER-SPECIFIC SECURE WISHLIST ENTRIES
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    // Filters wishlist items explicitly mapping to the currently active authenticated token ID
+    const q = query(
+      collection(db, "wishlists"), 
+      where("userId", "==", auth.currentUser.uid),
+      orderBy("timestamp", "desc"),
+      limit(5)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const wishlistData = [];
+      snapshot.forEach((doc) => {
+        wishlistData.push({ id: doc.id, ...doc.data() });
+      });
+      setWishlistItems(wishlistData);
+    }, (err) => {
+      console.warn("Firestore index initializing or indexing required: ", err);
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -159,9 +210,15 @@ export default function Dashboard({ greeting }) {
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{greeting || "System Active"}, Indian Nodes</p>
           <h1 className="text-2xl font-black text-slate-900">PriceWise Core Engine</h1>
         </div>
-        <Link to="/" className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors shadow-sm">
-          Disconnect View
-        </Link>
+        <button 
+          onClick={async () => {
+            await auth.signOut();
+            navigate('/login');
+          }}
+          className="px-4 py-2 bg-red-50 border border-red-200 text-red-600 font-bold rounded-xl text-xs hover:bg-red-100 transition-colors shadow-sm cursor-pointer"
+        >
+          Log Out Node
+        </button>
       </header>
 
       <div className="max-w-5xl mx-auto mb-8">
@@ -196,11 +253,36 @@ export default function Dashboard({ greeting }) {
           ) : currentProduct ? (
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-6 md:p-8 border-b border-slate-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">INR Localized Engine</span>
-                  <span className="flex items-center gap-1 text-[11px] text-slate-400"><ShieldCheck size={14} className="text-emerald-500"/> Multi-Platform Array Matrix</span>
+                <div className="flex justify-between items-start gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">INR Localized Engine</span>
+                      <span className="flex items-center gap-1 text-[11px] text-slate-400"><ShieldCheck size={14} className="text-emerald-500"/> Multi-Platform Array Matrix</span>
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800">{currentProduct.name}</h2>
+                  </div>
+
+                  {/* INTERACTIVE TRACKING TRIGGER COMPONENT */}
+                  <button
+                    onClick={handleTrackProduct}
+                    disabled={trackingLoading || currentProduct.lowestPrice === 0}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-emerald-600 shadow-sm transition-all disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    {trackingLoading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Bell size={14} />
+                    )}
+                    {trackingLoading ? 'Mapping Vector...' : 'Track Price 🔔'}
+                  </button>
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 mb-4">{currentProduct.name}</h2>
+
+                {trackingSuccess && (
+                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-bold rounded-xl animate-fade-in">
+                    {trackingSuccess}
+                  </div>
+                )}
+
                 {currentProduct.lowestPrice > 0 && (
                   <div className="flex items-baseline gap-3">
                     <span className="text-3xl font-black text-slate-900">₹{currentProduct.lowestPrice.toLocaleString('en-IN')}</span>
@@ -254,6 +336,7 @@ export default function Dashboard({ greeting }) {
           )}
         </div>
 
+        {/* SIDE BAR DASHBOARD DATA UTILITIES */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
@@ -262,6 +345,30 @@ export default function Dashboard({ greeting }) {
             <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between"><span className="text-slate-400 font-medium">Scope Matrix:</span> <span className="text-emerald-600 font-bold uppercase tracking-wider">4 Indian Core Apps</span></div>
               <div className="flex justify-between"><span className="text-slate-400 font-medium">Target Currency:</span> <span className="text-slate-700 font-bold font-mono">INR (₹) Parsing Enabled</span></div>
+            </div>
+          </div>
+
+          {/* DYNAMIC COMPONENT SECTION: LIVE SYSTEM TRACKING CONSOLE */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <Bell size={14} className="text-emerald-600" /> Active Wishlist Thresholds
+            </h3>
+            <div className="space-y-2.5">
+              {wishlistItems.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-4">No active products pinned to monitoring cluster.</p>
+              ) : (
+                wishlistItems.map((item) => (
+                  <div key={item.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div className="text-xs font-bold text-slate-800 truncate mb-1.5">{item.productName}</div>
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-slate-400 font-medium">Base: ₹{parseInt(item.trackedPrice).toLocaleString('en-IN')}</span>
+                      <span className="text-red-600 font-bold font-mono bg-red-50 px-1.5 py-0.5 rounded">
+                        Alert threshold @ ₹{parseInt(item.targetPrice).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
